@@ -6,14 +6,29 @@ function intersects(circle, rect) {
   return left && right && bottom && top;
 }
 
+class LoopAudio {
+  constructor(url) {
+    this.audio = new Audio(url);
+  }
+  play() {
+    this.audio.onended = () => {
+      this.audio.play();
+    };
+    this.audio.play();
+  }
+}
+
+const sounds = {
+  background: new LoopAudio(require("./sounds/background.wav")), // https://freesound.org/people/RutgerMuller/sounds/51239/
+  hit: new Audio(require("./sounds/hit.wav")), // https://freesound.org/people/NoiseCollector/packs/254/
+  move: new Audio(require("./sounds/move.wav")),
+};
+
 class Game {
-  constructor(ctx) {
-    this.ctx = ctx;
-    this.state = "initial";
-    this.leftRect = null;
-    this.rightRect = null;
-    this.ball = null;
-    this.score = null;
+  constructor(canvas) {
+    canvas.style.border = "1px solid black";
+    this.ctx = canvas.getContext("2d");
+    this.currentScreen = new PongScreen(this);
   }
   get width() {
     return this.ctx.canvas.width;
@@ -21,53 +36,149 @@ class Game {
   get height() {
     return this.ctx.canvas.height;
   }
-  get objs() {
-    return [this.leftRect, this.rightRect, this.ball, this.score];
-  }
-  initialState() {
-    this.state = "initial";
-    this.leftRect.x = 0;
-    this.leftRect.y = this.height / 2 - this.leftRect.height / 2; // center horizontally
-    this.rightRect.x = this.width - this.rightRect.width;
-    this.rightRect.y = this.height / 2 - this.rightRect.height / 2; // center horizontally
-    this.ball.x = this.ball.radius + this.leftRect.width;
-    this.ball.resetSpeed();
-    this.centerBallRelativeToRect();
-  }
-  centerBallRelativeToRect() {
-    this.ball.y = this.leftRect.y + this.leftRect.height / 2;
-  }
   clear() {
     this.ctx.clearRect(0, 0, this.width, this.height);
   }
   update() {
-    this.objs.forEach((obj) => obj.update(this));
-    // if the ball hits the rectangle increases the speed and inverts the direction
-    if (
-      intersects(this.ball, this.leftRect) ||
-      intersects(this.ball, this.rightRect)
-    ) {
-      this.ball.increaseSpeed();
-      this.ball.xSpeed = -this.ball.xSpeed;
-    } else {
-      // if it touches the left or right border, someone scored one point
-      if (this.ball.x <= this.ball.radius) {
-        this.rightWins();
-      } else if (this.ball.x + this.ball.radius >= this.width) {
-        this.leftWins();
+    this.currentScreen.update(this);
+  }
+  render() {
+    this.currentScreen.render(this);
+  }
+}
+
+class PongScreen {
+  constructor(game) {
+    sounds.background.play();
+    this.game = game;
+    this.state = "initial";
+    this.firstPlayer = new Player();
+    this.secondPlayer = new Player();
+    this.ball = new Ball();
+    this.score = new Score();
+    this.divider = new Divider();
+    this.initialState();
+  }
+  get objs() {
+    return [
+      this.firstPlayer,
+      this.secondPlayer,
+      this.ball,
+      this.score,
+      this.divider,
+    ];
+  }
+  initialState() {
+    this.state = "initial";
+    this.firstPlayer.x = 0;
+    this.firstPlayer.y = this.game.height / 2 - this.firstPlayer.height / 2; // center horizontally
+    this.secondPlayer.x = this.game.width - this.secondPlayer.width;
+    this.secondPlayer.y = this.game.height / 2 - this.secondPlayer.height / 2; // center horizontally
+    this.ball.x = this.ball.radius + this.firstPlayer.width;
+    this.ball.resetSpeed();
+    this.centerBallRelativeToPlayer();
+  }
+  centerBallRelativeToPlayer() {
+    this.ball.y = this.firstPlayer.y + this.firstPlayer.height / 2;
+  }
+  ensureRectBounds(rect) {
+    // make sure rectangles dont go ouf of bounds
+    if (rect.y < 0) {
+      rect.y = 0;
+    }
+    if (rect.y > this.game.height - rect.height) {
+      rect.y = this.game.height - rect.height;
+    }
+  }
+  update() {
+    if (prevControls.start && !controls.start) {
+      if (this.state === "playing") {
+        this.state = "paused";
+      } else {
+        this.state = "playing";
+      }
+    }
+
+    if (this.state === "paused") return;
+
+    if (controls.up) {
+      this.firstPlayer.moveUp();
+      this.secondPlayer.moveUp();
+      if (this.state === "initial") {
+        this.centerBallRelativeToPlayer();
+      }
+    } else if (controls.down) {
+      this.firstPlayer.moveDown();
+      this.secondPlayer.moveDown();
+      if (this.state === "initial") {
+        this.centerBallRelativeToPlayer();
+      }
+    }
+
+    this.ensureRectBounds(this.firstPlayer);
+    this.ensureRectBounds(this.secondPlayer);
+
+    if (this.state === "playing") {
+      this.ball.move();
+      // if the ball hits the upper or lower limits invert the direction
+      if (
+        this.ball.y + this.ball.radius >= this.game.height ||
+        this.ball.y - this.ball.radius <= 0
+      ) {
+        this.ball.ySpeed = -this.ball.ySpeed;
+      }
+
+      // if the ball hits the rectangle increases the speed and inverts the direction
+      if (
+        intersects(this.ball, this.firstPlayer) ||
+        intersects(this.ball, this.secondPlayer)
+      ) {
+        sounds.hit.play();
+        this.ball.increaseSpeed();
+        this.ball.xSpeed = -this.ball.xSpeed;
+      } else {
+        // if it touches the left or right border, someone scored one point
+        if (this.ball.x <= this.ball.radius) {
+          this.secondPlayerWins();
+        } else if (this.ball.x + this.ball.radius >= this.game.width) {
+          this.firstPlayerWins();
+        }
       }
     }
   }
-  rightWins() {
+  secondPlayerWins() {
     this.score.rightScore += 1;
     this.initialState();
   }
-  leftWins() {
+  firstPlayerWins() {
     this.score.leftScore += 1;
     this.initialState();
   }
+  renderPaused() {
+    const topOffset = 5;
+    const leftOffset = -35;
+    this.game.ctx.font = "20px monospace";
+    this.game.ctx.fillText(
+      "Paused",
+      this.game.width / 2 + leftOffset,
+      this.game.height / 2 + topOffset
+    );
+  }
   render() {
-    this.objs.forEach((obj) => obj.render(this));
+    if (this.state === "paused") {
+      this.renderPaused();
+    }
+    this.objs.forEach((obj) => obj.render(this.game));
+  }
+}
+
+class Divider {
+  render(game) {
+    game.ctx.beginPath();
+    game.ctx.setLineDash([game.height / 15]);
+    game.ctx.moveTo(game.width / 2, 0);
+    game.ctx.lineTo(game.width / 2, game.height);
+    game.ctx.stroke();
   }
 }
 
@@ -76,7 +187,6 @@ class Score {
     this.leftScore = 0;
     this.rightScore = 0;
   }
-  update(game) {}
   render(game) {
     const topOffset = 18;
     const y = game.height / 2 + topOffset;
@@ -87,28 +197,21 @@ class Score {
   }
 }
 
-class Rectangle {
+class Player {
   constructor() {
     this.width = 30;
     this.height = 100;
     this.x = 0;
     this.y = 0;
-    this.moveBy = 20;
+    this.moveBy = 10;
   }
   moveUp() {
+    sounds.move.play();
     this.y -= this.moveBy;
   }
   moveDown() {
+    sounds.move.play();
     this.y += this.moveBy;
-  }
-  update(game) {
-    // make sure rectangles dont go ouf of bounds
-    if (this.y < 0) {
-      this.y = 0;
-    }
-    if (this.y > game.height - this.height) {
-      this.y = game.height - this.height;
-    }
   }
   render(game) {
     game.ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -120,8 +223,12 @@ class Ball {
     this.radius = 15;
     this.x = 0;
     this.y = 0;
-    this.speed = 4;
+    this.speed = 3;
     this.resetSpeed();
+  }
+  move() {
+    this.x += this.xSpeed;
+    this.y += this.ySpeed;
   }
   resetSpeed() {
     this.xSpeed = this.speed;
@@ -131,14 +238,6 @@ class Ball {
     this.xSpeed *= 1.1;
     this.ySpeed *= 1.1;
   }
-  update(game) {
-    if (game.state !== "playing") return;
-    this.x += this.xSpeed;
-    this.y += this.ySpeed;
-    if (this.y + this.radius >= game.height || this.y - this.radius <= 0) {
-      this.ySpeed = -this.ySpeed;
-    }
-  }
   render(game) {
     game.ctx.beginPath();
     game.ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
@@ -147,51 +246,30 @@ class Ball {
   }
 }
 
+const controlMapping = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  " ": "start",
+};
+const controls = {};
+let prevControls = controls;
+
+document.addEventListener("keydown", (evt) => {
+  controls[controlMapping[evt.key]] = true;
+});
+
+document.addEventListener("keyup", (evt) => {
+  controls[controlMapping[evt.key]] = false;
+});
+
 function main() {
-  const canvas = document.querySelector("#canvas");
-  canvas.style.border = "1px solid black";
-  const ctx = canvas.getContext("2d");
-  const game = new Game(ctx);
-  game.leftRect = new Rectangle();
-  game.rightRect = new Rectangle();
-  game.ball = new Ball();
-  game.score = new Score();
-  game.initialState();
-  window.game = game;
-
-  window.onkeydown = (evt) => {
-    if (evt.key === " ") {
-      if (game.state === "paused") {
-        game.state = "playing";
-      } else {
-        game.state = "paused";
-      }
-    }
-    if (game.state === "paused") return;
-
-    console.log("keydown");
-    if (evt.key === "ArrowUp") {
-      game.leftRect.moveUp();
-      game.rightRect.moveUp();
-      if (game.state === "initial") {
-        game.update(); // TODO: Workaround to not make the ball go out of bounds
-        game.centerBallRelativeToRect();
-      }
-    }
-    if (evt.key === "ArrowDown") {
-      game.leftRect.moveDown();
-      game.rightRect.moveDown();
-      if (game.state === "initial") {
-        game.update(); // TODO: Workaround to not make the ball go out of bounds
-        game.centerBallRelativeToRect();
-      }
-    }
-  };
+  const game = new Game(document.querySelector("#canvas"));
 
   requestAnimationFrame(function loop() {
     game.clear();
     game.update();
     game.render();
+    prevControls = Object.assign({}, controls);
     requestAnimationFrame(loop);
   });
 }
