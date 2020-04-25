@@ -1,5 +1,7 @@
 import sounds from "./sounds";
 import controls from "./controls";
+import List from "./list";
+import PlayerSelectionScreen from "./player_selection_screen";
 
 let prevControls = controls;
 
@@ -16,11 +18,17 @@ export default class PongScreen {
     sounds.background.play();
     this.game = game;
     this.state = "initial";
-    this.firstPlayer = new Player();
-    this.secondPlayer = new Player();
-    this.ball = new Ball();
-    this.score = new Score();
-    this.divider = new Divider();
+    this.firstPlayer = new Player(this.game);
+    this.secondPlayer = new Player(this.game);
+    this.ball = new Ball(this.game);
+    this.score = new Score(this.game);
+    this.divider = new Divider(this.game);
+    this.pauseDialog = new PauseDialog(this.game, {
+      onResume: () => {
+        this.pauseDialog.hidden = true;
+        this.state = "playing";
+      },
+    });
     this.initialState();
   }
   get objs() {
@@ -30,6 +38,7 @@ export default class PongScreen {
       this.ball,
       this.score,
       this.divider,
+      this.pauseDialog,
     ];
   }
   initialState() {
@@ -56,10 +65,11 @@ export default class PongScreen {
   }
   update() {
     if (prevControls.start && !controls.start) {
-      if (this.state === "playing") {
-        this.state = "paused";
-      } else {
+      if (this.state === "initial") {
         this.state = "playing";
+      } else if (this.state === "playing") {
+        this.state = "paused";
+        this.pauseDialog.hidden = false;
       }
     }
 
@@ -83,7 +93,7 @@ export default class PongScreen {
 
       if (this.state === "playing") {
         this.ball.move();
-        // if the ball hits the upper or lower limits invert the direction
+        // if the ball hits the upper or lower limits invert the vertical direction
         if (
           this.ball.y + this.ball.radius >= this.game.height ||
           this.ball.y - this.ball.radius <= 0
@@ -91,7 +101,7 @@ export default class PongScreen {
           this.ball.ySpeed = -this.ball.ySpeed;
         }
 
-        // if the ball hits the rectangle increases the speed and inverts the direction
+        // if the ball hits the rectangle increases the speed and inverts the horizontal direction
         if (
           intersects(this.ball, this.firstPlayer) ||
           intersects(this.ball, this.secondPlayer)
@@ -109,6 +119,9 @@ export default class PongScreen {
         }
       }
     }
+    this.objs.forEach((obj) => {
+      if (obj.update) obj.update();
+    });
 
     prevControls = Object.assign({}, controls);
   }
@@ -120,21 +133,47 @@ export default class PongScreen {
     this.score.leftScore += 1;
     this.initialState();
   }
-  renderPaused() {
-    const topOffset = 5;
-    const leftOffset = -35;
-    this.game.ctx.font = "20px monospace";
-    this.game.ctx.fillText(
-      "Paused",
-      this.game.width / 2 + leftOffset,
-      this.game.height / 2 + topOffset
-    );
+  render() {
+    this.objs.forEach((obj) => obj.render(this.game));
+  }
+}
+
+export class PauseDialog {
+  constructor(game, { hidden = true, onResume }) {
+    this.game = game;
+    this.hidden = hidden;
+    const xOffset = 40;
+    const yOffset = 50;
+    this.x = game.width / 3 + xOffset;
+    this.y = game.height / 3 + yOffset;
+    this.selectionList = new List(game.ctx, {
+      items: [
+        { id: "resume", text: "Resume" },
+        { id: "quit", text: "Quit" },
+      ],
+      onSelect: (item) => {
+        if (item.id === "quit") {
+          game.changeScreen(PlayerSelectionScreen);
+        } else {
+          onResume();
+        }
+      },
+    });
+  }
+  update() {
+    if (this.hidden) return;
+    const xOffset = 20;
+    const yOffset = 40;
+    this.selectionList.x = this.x + xOffset;
+    this.selectionList.y = this.y + yOffset;
+    this.selectionList.update();
   }
   render() {
-    if (this.state === "paused") {
-      this.renderPaused();
-    }
-    this.objs.forEach((obj) => obj.render(this.game));
+    if (this.hidden) return;
+    const game = this.game;
+    game.ctx.font = "40px monospace";
+    game.ctx.fillText("Paused", this.x, this.y);
+    this.selectionList.render();
   }
 }
 
@@ -149,11 +188,13 @@ class Divider {
 }
 
 class Score {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     this.leftScore = 0;
     this.rightScore = 0;
   }
-  render(game) {
+  render() {
+    const game = this.game;
     const topOffset = 18;
     const y = game.height / 2 + topOffset;
     const leftOffset = -10;
@@ -164,7 +205,8 @@ class Score {
 }
 
 class Player {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     this.width = 30;
     this.height = 100;
     this.x = 0;
@@ -179,13 +221,14 @@ class Player {
     sounds.move.play();
     this.y += this.moveBy;
   }
-  render(game) {
-    game.ctx.fillRect(this.x, this.y, this.width, this.height);
+  render() {
+    this.game.ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 }
 
 class Ball {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     this.radius = 15;
     this.x = 0;
     this.y = 0;
@@ -204,7 +247,8 @@ class Ball {
     this.xSpeed *= 1.1;
     this.ySpeed *= 1.1;
   }
-  render(game) {
+  render() {
+    const game = this.game;
     game.ctx.beginPath();
     game.ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
     game.ctx.fillStyle = "black";
