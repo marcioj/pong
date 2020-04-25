@@ -2,6 +2,7 @@ import sounds from "./sounds";
 import controls from "./controls";
 import List from "./list";
 import PlayerSelectionScreen from "./player_selection_screen";
+import { clamp } from "./utils";
 
 let prevControls = controls;
 
@@ -54,13 +55,7 @@ export default class PongScreen {
     this.ball.y = this.firstPlayer.y + this.firstPlayer.height / 2;
   }
   ensureRectBounds(rect) {
-    // make sure rectangles dont go ouf of bounds
-    if (rect.y < 0) {
-      rect.y = 0;
-    }
-    if (rect.y > this.game.height - rect.height) {
-      rect.y = this.game.height - rect.height;
-    }
+    rect.y = clamp(rect.y, 0, this.game.height - rect.height);
   }
   update() {
     if (prevControls.start && !controls.start) {
@@ -76,19 +71,20 @@ export default class PongScreen {
       if (controls.up) {
         this.firstPlayer.moveUp();
         this.secondPlayer.moveUp();
+        this.ensureRectBounds(this.firstPlayer);
+        this.ensureRectBounds(this.secondPlayer);
         if (this.state === "initial") {
           this.centerBallRelativeToPlayer();
         }
       } else if (controls.down) {
         this.firstPlayer.moveDown();
         this.secondPlayer.moveDown();
+        this.ensureRectBounds(this.firstPlayer);
+        this.ensureRectBounds(this.secondPlayer);
         if (this.state === "initial") {
           this.centerBallRelativeToPlayer();
         }
       }
-
-      this.ensureRectBounds(this.firstPlayer);
-      this.ensureRectBounds(this.secondPlayer);
 
       if (this.state === "playing") {
         this.ball.move();
