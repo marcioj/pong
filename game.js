@@ -7,8 +7,11 @@ export default class Game {
     this.ctx = canvas.getContext("2d");
     this.changeScreen(PlayerSelectionScreen);
   }
-  changeScreen(Screen, opts) {
-    this.currentScreen = new Screen(this, opts);
+  changeScreen(screen, opts) {
+    this.nextScreen = {
+      screen,
+      opts,
+    };
   }
   get width() {
     return this.ctx.canvas.width;
@@ -17,6 +20,12 @@ export default class Game {
     return this.ctx.canvas.height;
   }
   clear() {
+    // make sure we switch screens in the beginning of the frame
+    if (this.nextScreen) {
+      const { screen: Screen, opts } = this.nextScreen;
+      this.currentScreen = new Screen(this, opts);
+      this.nextScreen = null;
+    }
     this.ctx.clearRect(0, 0, this.width, this.height);
   }
   update() {
@@ -24,5 +33,10 @@ export default class Game {
   }
   render() {
     this.currentScreen.render(this);
+  }
+  nextFrame() {
+    this.clear();
+    this.update();
+    this.render();
   }
 }

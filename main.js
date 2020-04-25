@@ -1,13 +1,20 @@
 import Game from "./game";
 
+const loop = (cb) => {
+  requestAnimationFrame(function nextFrame() {
+    cb();
+    requestAnimationFrame(nextFrame);
+  });
+};
+
+// const loop = (cb) => setInterval(cb, 1000);
+
 function main() {
   const game = new Game(document.querySelector("#canvas"));
+  window.game = game;
 
-  requestAnimationFrame(function loop() {
-    game.clear();
-    game.update();
-    game.render();
-    requestAnimationFrame(loop);
+  loop(() => {
+    game.nextFrame();
   });
 }
 

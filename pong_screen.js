@@ -25,7 +25,6 @@ export default class PongScreen {
     this.divider = new Divider(this.game);
     this.pauseDialog = new PauseDialog(this.game, {
       onResume: () => {
-        this.pauseDialog.hidden = true;
         this.state = "playing";
       },
     });
@@ -152,6 +151,7 @@ export class PauseDialog {
         { id: "quit", text: "Quit" },
       ],
       onSelect: (item) => {
+        this.hidden = true;
         if (item.id === "quit") {
           game.changeScreen(PlayerSelectionScreen);
         } else {
