@@ -79,18 +79,33 @@ export default class PongScreen {
 
     // FIXME: only the first player can pause. Putting this in the control loop causes the
     // state to change twice from initial, playing to paused
-    if (this.prevControls[0].start && !controls[0].start) {
-      if (this.state === "initial") {
-        this.state = "playing";
-      } else if (this.state === "playing") {
-        this.state = "paused";
-        this.pauseDialog.hidden = false;
-      }
-    }
+    // if (this.prevControls[0].start && !controls[0].start) {
+    //   if (this.state === "initial") {
+    //     this.state = "playing";
+    //   } else if (this.state === "playing") {
+    //     this.state = "paused";
+    //     this.pauseDialog.hidden = false;
+    //   }
+    // }
 
-    controls.forEach((control, i) => {
-      // const prevControl = this.prevControls[i];
-      const player = this.players[i];
+    let pressedStart = false;
+
+    controls.forEach((control, controlIndex) => {
+      const prevControl = this.prevControls[controlIndex];
+      const player = this.players[controlIndex];
+
+      if (!pressedStart && prevControl.start && !control.start) {
+        pressedStart = true;
+        if (
+          this.state === "initial" &&
+          this.startingPlayerIndex === controlIndex
+        ) {
+          this.state = "playing";
+        } else if (this.state === "playing") {
+          this.state = "paused";
+          this.pauseDialog.show(controlIndex);
+        }
+      }
 
       if (this.state !== "paused") {
         if (control.up) {
@@ -147,7 +162,11 @@ export default class PongScreen {
   }
   secondPlayerWins() {
     this.score.rightScore += 1;
-    this.startingPlayerIndex = 1;
+    if (this.game.settings.playMode === "1p_1p") {
+      this.startingPlayerIndex = 0;
+    } else {
+      this.startingPlayerIndex = 1;
+    }
     this.initialState();
   }
   firstPlayerWins() {
@@ -182,6 +201,10 @@ export class PauseDialog {
         }
       },
     });
+  }
+  show(controlIndex) {
+    this.selectionList.controlIndex = controlIndex;
+    this.hidden = false;
   }
   update() {
     if (this.hidden) return;

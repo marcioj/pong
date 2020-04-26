@@ -1,8 +1,6 @@
 import getControls from "./controls";
 import { clamp } from "./utils";
 
-let prevControls = getControls()[0];
-
 export default class List {
   constructor(ctx, { items, onSelect, x = 0, y = 0 }) {
     this.ctx = ctx;
@@ -10,10 +8,13 @@ export default class List {
     this.x = x;
     this.y = y;
     this.selectedIndex = 0;
+    this.controlIndex = 0;
     this.onSelect = onSelect;
+    this.prevControls = getControls()[this.controlIndex];
   }
   update() {
-    const controls = getControls()[0];
+    const prevControls = this.prevControls;
+    const controls = getControls()[this.controlIndex];
     if (prevControls.down && !controls.down) {
       this.selectedIndex++;
       this.selectedIndex = clamp(this.selectedIndex, 0, this.items.length - 1);
@@ -23,7 +24,7 @@ export default class List {
     } else if (prevControls.start && !controls.start) {
       this.onSelect(this.items[this.selectedIndex]);
     }
-    prevControls = controls;
+    this.prevControls = controls;
   }
   render() {
     const height = 20;

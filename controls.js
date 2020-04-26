@@ -24,6 +24,25 @@ document.addEventListener("keyup", (evt) => {
   });
 });
 
+function getGamePadControl(index) {
+  const gamepad = navigator.getGamepads()[index];
+  if (gamepad) {
+    const axes = gamepad.axes;
+    return {
+      start: gamepad.buttons[4].pressed,
+      up: axes[0] > 0.2,
+      down: axes[1] > 0.2,
+    };
+  }
+}
+
+function getKeyBoardControl(index) {
+  return Object.assign({}, controls[index]);
+}
+
 export default function getControls() {
-  return controls.map((control) => Object.assign({}, control));
+  return [
+    getGamePadControl(0) || getKeyBoardControl(0),
+    getGamePadControl(1) || getKeyBoardControl(1),
+  ];
 }
