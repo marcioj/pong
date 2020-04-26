@@ -8,8 +8,8 @@ export default class PlayerSelectionScreen {
       items: [
         { id: "1p_1p", text: "1P vs 1P" },
         { id: "1p_com", text: "1P vs COM" },
-        { id: "1p_2p_local", text: "1P vs 2P Local" },
-        { id: "1p_2p_online", text: "1P vs 2P Online" },
+        { id: "multiplayer", text: "1P vs 2P" },
+        { id: "online", text: "Online" },
       ],
       onSelect: (item) => {
         this.game.settings.playMode = item.id;

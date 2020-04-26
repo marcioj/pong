@@ -4,8 +4,6 @@ import List from "./list";
 import PlayerSelectionScreen from "./player_selection_screen";
 import { clamp } from "./utils";
 
-let prevControls = getControls();
-
 function intersects(circle, rect) {
   let left = rect.x + rect.width > circle.x - circle.radius;
   let right = rect.x < circle.x + circle.radius;
@@ -19,12 +17,12 @@ export default class PongScreen {
     sounds.background.play();
     this.game = game;
     this.state = "initial";
-    this.firstPlayer = new Player(this.game);
-    this.secondPlayer = new Player(this.game);
+    this.players = [new Player(this.game), new Player(this.game)];
     this.ball = new Ball(this.game);
     this.score = new Score(this.game);
     this.divider = new Divider(this.game);
-    this.startingPlayer = this.firstPlayer;
+    this.startingPlayerIndex = 0;
+    this.prevControls = getControls();
     this.pauseDialog = new PauseDialog(this.game, {
       onResume: () => {
         this.state = "playing";
@@ -32,10 +30,22 @@ export default class PongScreen {
     });
     this.initialState();
   }
+  getScreenControls() {
+    const controls = getControls();
+    const playMode = this.game.settings.playMode;
+    if (playMode === "1p_1p") {
+      return [controls[0], controls[0]];
+    } else if (playMode === "multiplayer") {
+      return controls;
+    }
+    return [controls[0], controls[0]];
+  }
+  get startingPlayer() {
+    return this.players[this.startingPlayerIndex];
+  }
   get objs() {
     return [
-      this.firstPlayer,
-      this.secondPlayer,
+      ...this.players,
       this.ball,
       this.score,
       this.divider,
@@ -44,10 +54,10 @@ export default class PongScreen {
   }
   initialState() {
     this.state = "initial";
-    this.firstPlayer.x = 0;
-    this.firstPlayer.y = this.game.height / 2 - this.firstPlayer.height / 2; // center horizontally
-    this.secondPlayer.x = this.game.width - this.secondPlayer.width;
-    this.secondPlayer.y = this.game.height / 2 - this.secondPlayer.height / 2; // center horizontally
+    this.players[0].x = 0;
+    this.players[0].y = this.game.height / 2 - this.players[0].height / 2; // center horizontally
+    this.players[1].x = this.game.width - this.players[1].width;
+    this.players[1].y = this.game.height / 2 - this.players[1].height / 2; // center horizontally
     this.ball.resetSpeed();
     this.centerBallRelativeToPlayer();
   }
@@ -65,8 +75,11 @@ export default class PongScreen {
     rect.y = clamp(rect.y, 0, this.game.height - rect.height);
   }
   update() {
-    const controls = getControls();
-    if (prevControls.start && !controls.start) {
+    const controls = this.getScreenControls();
+
+    // FIXME: only the first player can pause. Putting this in the control loop causes the
+    // state to change twice from initial, playing to paused
+    if (this.prevControls[0].start && !controls[0].start) {
       if (this.state === "initial") {
         this.state = "playing";
       } else if (this.state === "playing") {
@@ -75,34 +88,38 @@ export default class PongScreen {
       }
     }
 
+    controls.forEach((control, i) => {
+      // const prevControl = this.prevControls[i];
+      const player = this.players[i];
+
+      if (this.state !== "paused") {
+        if (control.up) {
+          player.moveUp();
+          this.ensureRectBounds(player);
+          if (this.state === "initial") {
+            this.centerBallRelativeToPlayer();
+          }
+        } else if (control.down) {
+          player.moveDown();
+          this.ensureRectBounds(player);
+          if (this.state === "initial") {
+            this.centerBallRelativeToPlayer();
+          }
+        }
+      }
+    });
+
     if (this.state !== "paused") {
-      this.handleBallPhysics(controls);
+      this.handleBallPhysics();
     }
+
     this.objs.forEach((obj) => {
       if (obj.update) obj.update();
     });
 
-    prevControls = getControls();
+    this.prevControls = this.getScreenControls();
   }
-  handleBallPhysics(controls) {
-    if (controls.up) {
-      this.firstPlayer.moveUp();
-      this.secondPlayer.moveUp();
-      this.ensureRectBounds(this.firstPlayer);
-      this.ensureRectBounds(this.secondPlayer);
-      if (this.state === "initial") {
-        this.centerBallRelativeToPlayer();
-      }
-    } else if (controls.down) {
-      this.firstPlayer.moveDown();
-      this.secondPlayer.moveDown();
-      this.ensureRectBounds(this.firstPlayer);
-      this.ensureRectBounds(this.secondPlayer);
-      if (this.state === "initial") {
-        this.centerBallRelativeToPlayer();
-      }
-    }
-
+  handleBallPhysics() {
     if (this.state === "playing") {
       this.ball.move();
       // if the ball hits the upper or lower limits invert the vertical direction
@@ -114,10 +131,7 @@ export default class PongScreen {
       }
 
       // if the ball hits the rectangle increases the speed and inverts the horizontal direction
-      if (
-        intersects(this.ball, this.firstPlayer) ||
-        intersects(this.ball, this.secondPlayer)
-      ) {
+      if (this.players.some((player) => intersects(this.ball, player))) {
         sounds.hit.play();
         this.ball.increaseSpeed();
         this.ball.xSpeed = -this.ball.xSpeed;
@@ -133,12 +147,12 @@ export default class PongScreen {
   }
   secondPlayerWins() {
     this.score.rightScore += 1;
-    this.startingPlayer = this.secondPlayer;
+    this.startingPlayerIndex = 1;
     this.initialState();
   }
   firstPlayerWins() {
     this.score.leftScore += 1;
-    this.startingPlayer = this.firstPlayer;
+    this.startingPlayerIndex = 0;
     this.initialState();
   }
   render() {

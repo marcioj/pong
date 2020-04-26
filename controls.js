@@ -1,18 +1,29 @@
-const controlMapping = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  " ": "start",
-};
-const controls = {};
+const controlMappings = [
+  {
+    w: "up",
+    s: "down",
+    " ": "start",
+  },
+  {
+    ArrowUp: "up",
+    ArrowDown: "down",
+    Enter: "start",
+  },
+];
+const controls = [{}, {}];
 
 document.addEventListener("keydown", (evt) => {
-  controls[controlMapping[evt.key]] = true;
+  controls.forEach((control, i) => {
+    control[controlMappings[i][evt.key]] = true;
+  });
 });
 
 document.addEventListener("keyup", (evt) => {
-  controls[controlMapping[evt.key]] = false;
+  controls.forEach((control, i) => {
+    control[controlMappings[i][evt.key]] = false;
+  });
 });
 
 export default function getControls() {
-  return Object.assign({}, controls);
+  return controls.map((control) => Object.assign({}, control));
 }
