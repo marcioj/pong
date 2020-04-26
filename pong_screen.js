@@ -24,6 +24,7 @@ export default class PongScreen {
     this.ball = new Ball(this.game);
     this.score = new Score(this.game);
     this.divider = new Divider(this.game);
+    this.startingPlayer = this.firstPlayer;
     this.pauseDialog = new PauseDialog(this.game, {
       onResume: () => {
         this.state = "playing";
@@ -47,12 +48,18 @@ export default class PongScreen {
     this.firstPlayer.y = this.game.height / 2 - this.firstPlayer.height / 2; // center horizontally
     this.secondPlayer.x = this.game.width - this.secondPlayer.width;
     this.secondPlayer.y = this.game.height / 2 - this.secondPlayer.height / 2; // center horizontally
-    this.ball.x = this.ball.radius + this.firstPlayer.width;
     this.ball.resetSpeed();
     this.centerBallRelativeToPlayer();
   }
   centerBallRelativeToPlayer() {
-    this.ball.y = this.firstPlayer.y + this.firstPlayer.height / 2;
+    const player = this.startingPlayer;
+    if (player.x === 0) {
+      this.ball.x = this.ball.radius + player.width;
+      this.ball.y = player.y + player.height / 2;
+    } else {
+      this.ball.x = player.x - this.ball.radius;
+      this.ball.y = player.y + player.height / 2;
+    }
   }
   ensureRectBounds(rect) {
     rect.y = clamp(rect.y, 0, this.game.height - rect.height);
@@ -68,51 +75,7 @@ export default class PongScreen {
     }
 
     if (this.state !== "paused") {
-      if (controls.up) {
-        this.firstPlayer.moveUp();
-        this.secondPlayer.moveUp();
-        this.ensureRectBounds(this.firstPlayer);
-        this.ensureRectBounds(this.secondPlayer);
-        if (this.state === "initial") {
-          this.centerBallRelativeToPlayer();
-        }
-      } else if (controls.down) {
-        this.firstPlayer.moveDown();
-        this.secondPlayer.moveDown();
-        this.ensureRectBounds(this.firstPlayer);
-        this.ensureRectBounds(this.secondPlayer);
-        if (this.state === "initial") {
-          this.centerBallRelativeToPlayer();
-        }
-      }
-
-      if (this.state === "playing") {
-        this.ball.move();
-        // if the ball hits the upper or lower limits invert the vertical direction
-        if (
-          this.ball.y + this.ball.radius >= this.game.height ||
-          this.ball.y - this.ball.radius <= 0
-        ) {
-          this.ball.ySpeed = -this.ball.ySpeed;
-        }
-
-        // if the ball hits the rectangle increases the speed and inverts the horizontal direction
-        if (
-          intersects(this.ball, this.firstPlayer) ||
-          intersects(this.ball, this.secondPlayer)
-        ) {
-          sounds.hit.play();
-          this.ball.increaseSpeed();
-          this.ball.xSpeed = -this.ball.xSpeed;
-        } else {
-          // if it touches the left or right border, someone scored one point
-          if (this.ball.x <= this.ball.radius) {
-            this.secondPlayerWins();
-          } else if (this.ball.x + this.ball.radius >= this.game.width) {
-            this.firstPlayerWins();
-          }
-        }
-      }
+      this.handleBallPhysics();
     }
     this.objs.forEach((obj) => {
       if (obj.update) obj.update();
@@ -120,12 +83,61 @@ export default class PongScreen {
 
     prevControls = Object.assign({}, controls);
   }
+  handleBallPhysics() {
+    if (controls.up) {
+      this.firstPlayer.moveUp();
+      this.secondPlayer.moveUp();
+      this.ensureRectBounds(this.firstPlayer);
+      this.ensureRectBounds(this.secondPlayer);
+      if (this.state === "initial") {
+        this.centerBallRelativeToPlayer();
+      }
+    } else if (controls.down) {
+      this.firstPlayer.moveDown();
+      this.secondPlayer.moveDown();
+      this.ensureRectBounds(this.firstPlayer);
+      this.ensureRectBounds(this.secondPlayer);
+      if (this.state === "initial") {
+        this.centerBallRelativeToPlayer();
+      }
+    }
+
+    if (this.state === "playing") {
+      this.ball.move();
+      // if the ball hits the upper or lower limits invert the vertical direction
+      if (
+        this.ball.y + this.ball.radius >= this.game.height ||
+        this.ball.y - this.ball.radius <= 0
+      ) {
+        this.ball.ySpeed = -this.ball.ySpeed;
+      }
+
+      // if the ball hits the rectangle increases the speed and inverts the horizontal direction
+      if (
+        intersects(this.ball, this.firstPlayer) ||
+        intersects(this.ball, this.secondPlayer)
+      ) {
+        sounds.hit.play();
+        this.ball.increaseSpeed();
+        this.ball.xSpeed = -this.ball.xSpeed;
+      } else {
+        // if it touches the left or right border, someone scored one point
+        if (this.ball.x <= this.ball.radius) {
+          this.secondPlayerWins();
+        } else if (this.ball.x + this.ball.radius >= this.game.width) {
+          this.firstPlayerWins();
+        }
+      }
+    }
+  }
   secondPlayerWins() {
     this.score.rightScore += 1;
+    this.startingPlayer = this.secondPlayer;
     this.initialState();
   }
   firstPlayerWins() {
     this.score.leftScore += 1;
+    this.startingPlayer = this.firstPlayer;
     this.initialState();
   }
   render() {
