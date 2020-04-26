@@ -1,10 +1,10 @@
 import sounds from "./sounds";
-import controls from "./controls";
+import getControls from "./controls";
 import List from "./list";
 import PlayerSelectionScreen from "./player_selection_screen";
 import { clamp } from "./utils";
 
-let prevControls = controls;
+let prevControls = getControls();
 
 function intersects(circle, rect) {
   let left = rect.x + rect.width > circle.x - circle.radius;
@@ -65,6 +65,7 @@ export default class PongScreen {
     rect.y = clamp(rect.y, 0, this.game.height - rect.height);
   }
   update() {
+    const controls = getControls();
     if (prevControls.start && !controls.start) {
       if (this.state === "initial") {
         this.state = "playing";
@@ -75,15 +76,15 @@ export default class PongScreen {
     }
 
     if (this.state !== "paused") {
-      this.handleBallPhysics();
+      this.handleBallPhysics(controls);
     }
     this.objs.forEach((obj) => {
       if (obj.update) obj.update();
     });
 
-    prevControls = Object.assign({}, controls);
+    prevControls = getControls();
   }
-  handleBallPhysics() {
+  handleBallPhysics(controls) {
     if (controls.up) {
       this.firstPlayer.moveUp();
       this.secondPlayer.moveUp();

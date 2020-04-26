@@ -1,7 +1,7 @@
-import controls from "./controls";
+import getControls from "./controls";
 import { clamp } from "./utils";
 
-let prevControls = controls;
+let prevControls = getControls();
 
 export default class List {
   constructor(ctx, { items, onSelect, x = 0, y = 0 }) {
@@ -13,6 +13,7 @@ export default class List {
     this.onSelect = onSelect;
   }
   update() {
+    const controls = getControls();
     if (prevControls.down && !controls.down) {
       this.selectedIndex++;
       this.selectedIndex = clamp(this.selectedIndex, 0, this.items.length - 1);
@@ -22,7 +23,7 @@ export default class List {
     } else if (prevControls.start && !controls.start) {
       this.onSelect(this.items[this.selectedIndex]);
     }
-    prevControls = Object.assign({}, controls);
+    prevControls = controls;
   }
   render() {
     const height = 20;

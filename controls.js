@@ -13,4 +13,6 @@ document.addEventListener("keyup", (evt) => {
   controls[controlMapping[evt.key]] = false;
 });
 
-export default controls;
+export default function getControls() {
+  return Object.assign({}, controls);
+}
