@@ -1,8 +1,8 @@
-import sounds from "./sounds";
-import getControls from "./controls";
-import List from "./list";
-import PlayerSelectionScreen from "./player_selection_screen";
-import { clamp, roundUpToNextMultiple, rand } from "./utils";
+import sounds from "./sounds.js";
+import getControls from "./controls.js";
+import List from "./list.js";
+import PlayerSelectionScreen from "./player_selection_screen.js";
+import { clamp, roundUpToNextMultiple, rand } from "./utils.js";
 
 function collide(circle, rect) {
   let left = rect.x + rect.width > circle.x - circle.radius;

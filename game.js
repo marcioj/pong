@@ -1,4 +1,4 @@
-import PlayerSelectionScreen from "./player_selection_screen";
+import PlayerSelectionScreen from "./player_selection_screen.js";
 
 export default class Game {
   constructor(canvas) {

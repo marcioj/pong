@@ -1,5 +1,5 @@
-import PongScreen from "./pong_screen";
-import List from "./list";
+import PongScreen from "./pong_screen.js";
+import List from "./list.js";
 
 export default class PlayerSelectionScreen {
   constructor(game) {
@@ -9,7 +9,6 @@ export default class PlayerSelectionScreen {
         { id: "1p_1p", text: "1P vs 1P" },
         { id: "1p_com", text: "1P vs COM" },
         { id: "multiplayer", text: "1P vs 2P" },
-        { id: "online", text: "Online" },
       ],
       onSelect: (item) => {
         this.game.settings.playMode = item.id;

@@ -1,5 +1,5 @@
-import getControls from "./controls";
-import { clamp } from "./utils";
+import getControls from "./controls.js";
+import { clamp } from "./utils.js";
 
 export default class List {
   constructor(ctx, { items, onSelect, x = 0, y = 0 }) {

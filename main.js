@@ -1,4 +1,4 @@
-import Game from "./game";
+import Game from "./game.js";
 
 const loop = (cb) => {
   requestAnimationFrame(function nextFrame() {
@@ -6,8 +6,6 @@ const loop = (cb) => {
     requestAnimationFrame(nextFrame);
   });
 };
-
-// const loop = (cb) => setInterval(cb, 1000);
 
 function main() {
   const game = new Game(document.querySelector("#canvas"));
