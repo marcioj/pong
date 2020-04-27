@@ -2,9 +2,9 @@ import sounds from "./sounds";
 import getControls from "./controls";
 import List from "./list";
 import PlayerSelectionScreen from "./player_selection_screen";
-import { clamp } from "./utils";
+import { clamp, roundUpToNextMultiple, rand } from "./utils";
 
-function intersects(circle, rect) {
+function collide(circle, rect) {
   let left = rect.x + rect.width > circle.x - circle.radius;
   let right = rect.x < circle.x + circle.radius;
   let top = rect.y < circle.y + circle.radius;
@@ -35,6 +35,8 @@ export default class PongScreen {
     const playMode = this.game.settings.playMode;
     if (playMode === "1p_1p") {
       return [controls[0], controls[0]];
+    } else if (playMode === "1p_com") {
+      return [controls[0]];
     } else if (playMode === "multiplayer") {
       return controls;
     }
@@ -74,20 +76,37 @@ export default class PongScreen {
   ensureRectBounds(rect) {
     rect.y = clamp(rect.y, 0, this.game.height - rect.height);
   }
+  updateCom() {
+    const playMode = this.game.settings.playMode;
+    if (playMode === "1p_com") {
+      const player = this.players[1];
+      if (this.state === "initial" && this.startingPlayerIndex === 1) {
+        // TODO: do some random things before throwing the ball to feel more natural
+        this.state = "playing";
+        return;
+      } else if (this.state === "playing") {
+        // Without the roundUp, the COM player will have a shaking effect
+        const ballCenter = roundUpToNextMultiple(
+          this.ball.y - player.height / 2,
+          player.moveBy
+        );
+
+        // This determine how smart the COM is
+        const doTheRightMove = rand(0, 1) === 1;
+
+        if (this.ball.xSpeed > 0 && doTheRightMove) {
+          if (ballCenter < player.y) {
+            player.moveUp();
+          } else if (ballCenter > player.y) {
+            player.moveDown();
+          }
+          this.ensureRectBounds(player);
+        }
+      }
+    }
+  }
   update() {
     const controls = this.getScreenControls();
-
-    // FIXME: only the first player can pause. Putting this in the control loop causes the
-    // state to change twice from initial, playing to paused
-    // if (this.prevControls[0].start && !controls[0].start) {
-    //   if (this.state === "initial") {
-    //     this.state = "playing";
-    //   } else if (this.state === "playing") {
-    //     this.state = "paused";
-    //     this.pauseDialog.hidden = false;
-    //   }
-    // }
-
     let pressedStart = false;
 
     controls.forEach((control, controlIndex) => {
@@ -124,9 +143,10 @@ export default class PongScreen {
       }
     });
 
-    if (this.state !== "paused") {
+    if (this.state === "playing") {
       this.handleBallPhysics();
     }
+    this.updateCom();
 
     this.objs.forEach((obj) => {
       if (obj.update) obj.update();
@@ -135,28 +155,26 @@ export default class PongScreen {
     this.prevControls = this.getScreenControls();
   }
   handleBallPhysics() {
-    if (this.state === "playing") {
-      this.ball.move();
-      // if the ball hits the upper or lower limits invert the vertical direction
-      if (
-        this.ball.y + this.ball.radius >= this.game.height ||
-        this.ball.y - this.ball.radius <= 0
-      ) {
-        this.ball.ySpeed = -this.ball.ySpeed;
-      }
+    this.ball.move();
+    // if the ball hits the upper or lower limits invert the vertical direction
+    if (
+      this.ball.y + this.ball.radius >= this.game.height ||
+      this.ball.y - this.ball.radius <= 0
+    ) {
+      this.ball.ySpeed = -this.ball.ySpeed;
+    }
 
-      // if the ball hits the rectangle increases the speed and inverts the horizontal direction
-      if (this.players.some((player) => intersects(this.ball, player))) {
-        sounds.hit.play();
-        this.ball.increaseSpeed();
-        this.ball.xSpeed = -this.ball.xSpeed;
-      } else {
-        // if it touches the left or right border, someone scored one point
-        if (this.ball.x <= this.ball.radius) {
-          this.secondPlayerWins();
-        } else if (this.ball.x + this.ball.radius >= this.game.width) {
-          this.firstPlayerWins();
-        }
+    // if the ball hits the rectangle increases the speed and inverts the horizontal direction
+    if (this.players.some((player) => collide(this.ball, player))) {
+      sounds.hit.play();
+      this.ball.increaseSpeed();
+      this.ball.xSpeed = -this.ball.xSpeed;
+    } else {
+      // if it touches the left or right border, someone scored one point
+      if (this.ball.x <= this.ball.radius) {
+        this.secondPlayerWins();
+      } else if (this.ball.x + this.ball.radius >= this.game.width) {
+        this.firstPlayerWins();
       }
     }
   }
