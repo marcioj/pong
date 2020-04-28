@@ -27,15 +27,16 @@ export default class List {
     this.prevControls = controls;
   }
   render() {
-    const height = 20;
+    const height = 30;
+    const xOffset = -26;
     let itemY = height + this.y;
 
-    this.ctx.font = `${height}px monospace`;
+    this.ctx.font = `20px Gameplay`;
     this.items.forEach((item, i) => {
       const selected = this.selectedIndex === i;
       this.ctx.fillText(
-        selected ? `► ${item.text}` : `  ${item.text}`,
-        this.x,
+        selected ? `► ${item.text}` : `${item.text}`,
+        this.x + (selected ? xOffset : 0),
         itemY
       );
 

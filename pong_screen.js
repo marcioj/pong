@@ -14,7 +14,7 @@ function collide(circle, rect) {
 
 export default class PongScreen {
   constructor(game) {
-    sounds.background.play();
+    // sounds.background.play();
     this.game = game;
     this.state = "initial";
     this.players = [new Player(this.game), new Player(this.game)];
@@ -201,7 +201,7 @@ export class PauseDialog {
   constructor(game, { hidden = true, onResume }) {
     this.game = game;
     this.hidden = hidden;
-    const xOffset = 40;
+    const xOffset = 30;
     const yOffset = 50;
     this.x = game.width / 3 + xOffset;
     this.y = game.height / 3 + yOffset;
@@ -226,8 +226,8 @@ export class PauseDialog {
   }
   update() {
     if (this.hidden) return;
-    const xOffset = 20;
-    const yOffset = 40;
+    const xOffset = 50;
+    const yOffset = 60;
     this.selectionList.x = this.x + xOffset;
     this.selectionList.y = this.y + yOffset;
     this.selectionList.update();
@@ -235,7 +235,7 @@ export class PauseDialog {
   render() {
     if (this.hidden) return;
     const game = this.game;
-    game.ctx.font = "40px monospace";
+    game.ctx.font = "40px Gameplay";
     game.ctx.fillText("Paused", this.x, this.y);
     this.selectionList.render();
   }
@@ -262,7 +262,7 @@ class Score {
     const topOffset = 18;
     const y = game.height / 2 + topOffset;
     const leftOffset = -10;
-    game.ctx.font = "50px monospace";
+    game.ctx.font = "50px Gameplay";
     game.ctx.fillText(this.leftScore, game.width / 4 + leftOffset, y);
     game.ctx.fillText(this.rightScore, (game.width / 4) * 3 + leftOffset, y);
   }

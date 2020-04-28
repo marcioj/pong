@@ -17,15 +17,17 @@ export default class PlayerSelectionScreen {
     });
   }
   update() {
-    const xOffset = 70;
-    const yOffset = 100;
+    const xOffset = 130;
+    const yOffset = 150;
     this.selectionList.x = this.game.width / 4 + xOffset;
     this.selectionList.y = this.game.height / 4 + yOffset;
     this.selectionList.update();
   }
   render() {
-    this.game.ctx.font = "100px monospace";
-    this.game.ctx.fillText("PONG", this.game.width / 3, 100);
+    const xOffset = -30;
+    const yOffset = 200;
+    this.game.ctx.font = "100px Gameplay";
+    this.game.ctx.fillText("PONG", this.game.width / 3 + xOffset, yOffset);
     this.selectionList.render();
   }
 }
