@@ -10,21 +10,24 @@ export default class List {
     this.selectedIndex = 0;
     this.controlIndex = 0;
     this.onSelect = onSelect;
-    this.prevControls = getControls()[this.controlIndex];
+    this.prevControl = this.getControl();
+  }
+  getControl() {
+    return getControls()[this.controlIndex];
   }
   update() {
-    const prevControls = this.prevControls;
-    const controls = getControls()[this.controlIndex];
-    if (prevControls.down && !controls.down) {
+    const prevControl = this.prevControl;
+    const control = this.getControl();
+    if (prevControl.down && !control.down) {
       this.selectedIndex++;
       this.selectedIndex = clamp(this.selectedIndex, 0, this.items.length - 1);
-    } else if (prevControls.up && !controls.up) {
+    } else if (prevControl.up && !control.up) {
       this.selectedIndex--;
       this.selectedIndex = clamp(this.selectedIndex, 0, this.items.length - 1);
-    } else if (prevControls.start && !controls.start) {
+    } else if (prevControl.start && !control.start) {
       this.onSelect(this.items[this.selectedIndex]);
     }
-    this.prevControls = controls;
+    this.prevControl = control;
   }
   render() {
     const height = 30;

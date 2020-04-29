@@ -1,8 +1,10 @@
 import sounds from "./sounds.js";
-import getControls from "./controls.js";
 import List from "./list.js";
 import PlayerSelectionScreen from "./player_selection_screen.js";
-import { clamp, roundUpToNextMultiple, rand } from "./utils.js";
+import { clamp } from "./utils.js";
+import Player from "./player.js";
+import COMPlayer from "./com_player.js";
+import BasePlayer from "./base_player.js";
 
 function collide(circle, rect) {
   let left = rect.x + rect.width > circle.x - circle.radius;
@@ -14,33 +16,42 @@ function collide(circle, rect) {
 
 export default class PongScreen {
   constructor(game) {
-    // sounds.background.play();
     this.game = game;
-    this.state = "initial";
-    this.players = [new Player(this.game), new Player(this.game)];
+    this.players = [
+      new Player(this.game, {
+        controlIndex: 0,
+        onStart: () => this.handleStart(0),
+      }),
+      this.getSecondPlayer(),
+    ];
     this.ball = new Ball(this.game);
     this.score = new Score(this.game);
     this.divider = new Divider(this.game);
     this.startingPlayerIndex = 0;
-    this.prevControls = getControls();
     this.pauseDialog = new PauseDialog(this.game, {
       onResume: () => {
-        this.state = "playing";
+        this.changeState("playing");
       },
     });
     this.initialState();
   }
-  getScreenControls() {
-    const controls = getControls();
+  changeState(state) {
+    this.state = state;
+  }
+  getSecondPlayer() {
     const playMode = this.game.settings.playMode;
     if (playMode === "1p_1p") {
-      return [controls[0], controls[0]];
+      return new Player(this.game, {
+        controlIndex: 0,
+      });
     } else if (playMode === "1p_com") {
-      return [controls[0]];
+      return new COMPlayer(this.game, { pongScreen: this });
     } else if (playMode === "multiplayer") {
-      return controls;
+      return new Player(this.game, {
+        controlIndex: 1,
+        onStart: () => this.handleStart(1),
+      });
     }
-    return [controls[0], controls[0]];
   }
   get startingPlayer() {
     return this.players[this.startingPlayerIndex];
@@ -76,69 +87,19 @@ export default class PongScreen {
   ensureRectBounds(rect) {
     rect.y = clamp(rect.y, 0, this.game.height - rect.height);
   }
-  updateCom() {
-    const playMode = this.game.settings.playMode;
-    if (playMode === "1p_com") {
-      const player = this.players[1];
-      if (this.state === "initial" && this.startingPlayerIndex === 1) {
-        // TODO: do some random things before throwing the ball to feel more natural
-        this.state = "playing";
-        return;
-      } else if (this.state === "playing") {
-        // Without the roundUp, the COM player will have a shaking effect
-        const ballCenter = roundUpToNextMultiple(
-          this.ball.y - player.height / 2,
-          player.moveBy
-        );
-
-        // This determine how smart the COM is
-        const doTheRightMove = rand(0, 1) === 1;
-
-        if (this.ball.xSpeed > 0 && doTheRightMove) {
-          if (ballCenter < player.y) {
-            player.moveUp();
-          } else if (ballCenter > player.y) {
-            player.moveDown();
-          }
-          this.ensureRectBounds(player);
-        }
-      }
-    }
-  }
   update() {
-    const controls = this.getScreenControls();
-    let pressedStart = false;
-
-    controls.forEach((control, controlIndex) => {
-      const prevControl = this.prevControls[controlIndex];
-      const player = this.players[controlIndex];
-
-      if (!pressedStart && prevControl.start && !control.start) {
-        pressedStart = true;
-        if (
-          this.state === "initial" &&
-          this.startingPlayerIndex === controlIndex
-        ) {
-          this.state = "playing";
-        } else if (this.state === "playing") {
-          this.state = "paused";
-          this.pauseDialog.show(controlIndex);
-        }
-      }
-
-      if (this.state !== "paused") {
-        if (control.up) {
-          player.moveUp();
-          this.ensureRectBounds(player);
-          if (this.state === "initial") {
-            this.centerBallRelativeToPlayer();
+    this.objs.forEach((obj) => {
+      if (obj.update) {
+        if (obj instanceof BasePlayer) {
+          if (this.state !== "paused") {
+            obj.update();
+            this.ensureRectBounds(obj);
+            if (this.state === "initial") {
+              this.centerBallRelativeToPlayer();
+            }
           }
-        } else if (control.down) {
-          player.moveDown();
-          this.ensureRectBounds(player);
-          if (this.state === "initial") {
-            this.centerBallRelativeToPlayer();
-          }
+        } else {
+          obj.update();
         }
       }
     });
@@ -146,13 +107,14 @@ export default class PongScreen {
     if (this.state === "playing") {
       this.handleBallPhysics();
     }
-    this.updateCom();
-
-    this.objs.forEach((obj) => {
-      if (obj.update) obj.update();
-    });
-
-    this.prevControls = this.getScreenControls();
+  }
+  handleStart(index) {
+    if (this.state === "initial" && this.startingPlayerIndex === index) {
+      this.changeState("playing");
+    } else if (this.state === "playing") {
+      this.changeState("paused");
+      this.pauseDialog.show(index);
+    }
   }
   handleBallPhysics() {
     this.ball.move();
@@ -265,28 +227,6 @@ class Score {
     game.ctx.font = "50px Gameplay";
     game.ctx.fillText(this.leftScore, game.width / 4 + leftOffset, y);
     game.ctx.fillText(this.rightScore, (game.width / 4) * 3 + leftOffset, y);
-  }
-}
-
-class Player {
-  constructor(game) {
-    this.game = game;
-    this.width = 30;
-    this.height = 100;
-    this.x = 0;
-    this.y = 0;
-    this.moveBy = 10;
-  }
-  moveUp() {
-    sounds.move.play();
-    this.y -= this.moveBy;
-  }
-  moveDown() {
-    sounds.move.play();
-    this.y += this.moveBy;
-  }
-  render() {
-    this.game.ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 }
 
