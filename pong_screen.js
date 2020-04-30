@@ -126,11 +126,20 @@ export default class PongScreen {
       this.ball.ySpeed = -this.ball.ySpeed;
     }
 
+    let playerHit;
     // if the ball hits the rectangle increases the speed and inverts the horizontal direction
-    if (this.players.some((player) => collide(this.ball, player))) {
+    if (
+      (playerHit = this.players.find((player) => collide(this.ball, player)))
+    ) {
       sounds.hit.play();
       this.ball.increaseSpeed();
       this.ball.xSpeed = -this.ball.xSpeed;
+      const playerCenter = playerHit.y + playerHit.height / 2;
+      if (this.ball.y < playerCenter) {
+        this.ball.ySpeed = -Math.abs(this.ball.ySpeed);
+      } else {
+        this.ball.ySpeed = Math.abs(this.ball.ySpeed);
+      }
     } else {
       // if it touches the left or right border, someone scored one point
       if (this.ball.x <= this.ball.radius) {
