@@ -7,7 +7,9 @@ const loop = (cb) => {
   });
 };
 
-function main() {
+async function main() {
+  // Wait for the font to load to avoid FOUC
+  await document.fonts.load('16px "Gameplay"');
   const game = new Game(document.querySelector("#canvas"));
   window.game = game;
 
